@@ -3,7 +3,101 @@ import "./App.css";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── Mock data for UI development ────────────────────────────────────────────
+const USE_MOCK = true; // set to false to use the real Groq API
+
+function getMockResult(code) {
+  const len = code.length;
+  // Vary scores based on code length so results feel dynamic
+  const seed = len % 100;
+  const secScore = 45 + (seed % 40);
+  const perfScore = 30 + (seed % 55);
+  const qualScore = 60 + (seed % 30);
+  const testScore = 20 + (seed % 50);
+  const overall = Math.round(
+    (secScore + perfScore + qualScore + testScore) / 4,
+  );
+
+  return {
+    security: {
+      agent: "Security Auditor",
+      score: secScore,
+      issues: [
+        "Hardcoded credentials detected in config block",
+        "SQL query built with string concatenation (injection risk)",
+        "No input sanitization on user-supplied parameters",
+      ],
+      recommendations: [
+        "Use environment variables for all secrets",
+        "Switch to parameterized queries or an ORM",
+        "Validate and sanitize all external input",
+      ],
+    },
+    performance: {
+      agent: "Performance Analyzer",
+      score: perfScore,
+      issues: [
+        "O(n²) nested loop in processItems() — consider a hash map",
+        "Redundant DB call inside a loop (N+1 query pattern)",
+        "Large object cloned on every render — memoize or move outside",
+      ],
+      recommendations: [
+        "Refactor nested loop to O(n) with a lookup table",
+        "Batch DB queries and cache repeated lookups",
+        "Memoize expensive computations with useMemo / cache layer",
+      ],
+    },
+    quality: {
+      agent: "Code Quality Judge",
+      score: qualScore,
+      issues: [
+        "Function doStuff() lacks a descriptive name and inline docs",
+        "Magic numbers (42, 7, 1000) sprinkled throughout — extract as constants",
+      ],
+      recommendations: [
+        "Rename functions to reflect intent; add JSDoc comments",
+        "Extract magic numbers into named constants at the top of the file",
+        "Split god-functions > 60 lines into focused single-responsibility units",
+      ],
+    },
+    testing: {
+      agent: "Test Coverage Advisor",
+      score: testScore,
+      issues: [
+        "No unit tests found for core business logic",
+        "Edge cases (empty input, null, overflow) not covered",
+        "No integration tests for the API layer",
+      ],
+      recommendations: [
+        "Add unit tests for every public function using Jest / Vitest",
+        "Cover null, empty, and boundary-value inputs explicitly",
+        "Add at least one end-to-end test for the critical user path",
+      ],
+    },
+    verdict: {
+      overall_score: overall,
+      deployment_ready: overall >= 65,
+      summary:
+        overall >= 65
+          ? "The code is in reasonable shape but has a few issues worth addressing before a production release. Security and test coverage need the most attention."
+          : "Several critical issues need to be resolved before this code is production-ready. Focus on security hardening and adding test coverage first.",
+      priority_fixes: [
+        "Remove hardcoded secrets and move them to environment variables",
+        "Fix the N+1 query pattern — batch or cache DB lookups",
+        "Add input validation and sanitize all user-supplied data",
+        "Write unit tests for the core business logic before merging",
+      ],
+      cleaned_code: "// cleaned code would appear here",
+    },
+  };
+}
+
+async function mockFetch(code) {
+  // Simulate network delay (1–2 s) so loading states are visible
+  await new Promise((r) => setTimeout(r, 1200 + Math.random() * 800));
+  return getMockResult(code);
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function scoreColor(s) {
   if (s >= 75) return "var(--cr-green)";
@@ -19,39 +113,30 @@ function scoreLabel(s) {
   return "Critical";
 }
 
-// ─── ScoreRing ───────────────────────────────────────────────────────────────
-
 function ScoreRing({ score }) {
-  const r = 18;
+  const r = 22;
   const circ = 2 * Math.PI * r;
-  const offset = circ - (score / 100) * circ;
-  const color = scoreColor(score);
+  const pct = Math.min(Math.max(score, 0), 100);
+  const offset = circ - (pct / 100) * circ;
 
   return (
     <div className="cr-ring-wrap">
-      <svg
-        width="44"
-        height="44"
-        viewBox="0 0 44 44"
-        style={{ transform: "rotate(-90deg)" }}
-      >
-        <circle className="cr-ring-bg" cx="22" cy="22" r={r} />
+      <svg width="52" height="52" viewBox="0 0 52 52">
+        <circle className="cr-ring-bg" cx="26" cy="26" r={r} />
         <circle
           className="cr-ring-val"
-          cx="22"
-          cy="22"
+          cx="26"
+          cy="26"
           r={r}
-          stroke={color}
-          strokeDasharray={circ}
-          strokeDashoffset={offset}
+          stroke={scoreColor(score)}
+          strokeDasharray={`${circ}`}
+          strokeDashoffset={`${offset}`}
         />
       </svg>
-      <div className="cr-ring-num">{score}</div>
+      <div className="cr-ring-num">{pct}</div>
     </div>
   );
 }
-
-// ─── AgentRow ────────────────────────────────────────────────────────────────
 
 const AGENTS = [
   { key: "security", label: "Security", icon: "ti-lock" },
@@ -62,8 +147,8 @@ const AGENTS = [
 
 function AgentRow({ agentKey, data }) {
   const cfg = AGENTS.find((a) => a.key === agentKey);
-  const score = data?.score ?? 0;
-  const issues = (data?.issues ?? []).slice(0, 2);
+  const score = typeof data?.score === "number" ? data.score : 0;
+  const issues = (data?.issues ?? []).slice(0, 3);
 
   return (
     <div className="cr-agent-row">
@@ -90,8 +175,6 @@ function AgentRow({ agentKey, data }) {
   );
 }
 
-// ─── Verdict ─────────────────────────────────────────────────────────────────
-
 function Verdict({ data }) {
   if (!data) return null;
   const ready = data.deployment_ready;
@@ -104,9 +187,9 @@ function Verdict({ data }) {
           <div className="cr-verdict-sublabel">Overall score</div>
           <div
             className="cr-verdict-score"
-            style={{ color: scoreColor(data.overall_score) }}
+            style={{ color: scoreColor(data.overall_score ?? 0) }}
           >
-            {data.overall_score}
+            {data.overall_score ?? 0}
             <span className="cr-verdict-outof">/100</span>
           </div>
         </div>
@@ -135,8 +218,6 @@ function Verdict({ data }) {
     </div>
   );
 }
-
-// ─── Results panel states ────────────────────────────────────────────────────
 
 function EmptyState() {
   return (
@@ -185,14 +266,11 @@ function ResultsState({ result }) {
   );
 }
 
-// ─── Main App ────────────────────────────────────────────────────────────────
-
 export default function App() {
   const [code, setCode] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | loading | success | error
+  const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const textareaRef = useRef(null);
 
   async function runReview() {
     if (!code.trim()) return;
@@ -201,17 +279,29 @@ export default function App() {
     setErrorMsg("");
 
     try {
-      const res = await fetch(`${API_BASE}/review`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
+      let data;
 
-      if (!res.ok) {
-        throw new Error(`Server returned ${res.status} ${res.statusText}`);
+      if (USE_MOCK) {
+        // ── Mock mode: no API calls, instant fake results ──
+        data = await mockFetch(code);
+      } else {
+        // ── Real mode: hit the Groq-backed FastAPI backend ──
+        const res = await fetch(`${API_BASE}/review`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(
+            `${res.status} ${res.statusText} — ${text.slice(0, 120)}`,
+          );
+        }
+
+        data = await res.json();
       }
 
-      const data = await res.json();
       setResult(data);
       setStatus("success");
     } catch (err) {
@@ -221,11 +311,9 @@ export default function App() {
   }
 
   const isLoading = status === "loading";
-  const chars = code.length;
 
   return (
     <div className="cr-root">
-      {/* Header */}
       <header className="cr-header">
         <div className="cr-logo" aria-hidden="true">
           <i className="ti ti-shield-check" />
@@ -238,7 +326,31 @@ export default function App() {
         </div>
       </header>
 
-      {/* Body */}
+      {/* Mock mode indicator */}
+      {USE_MOCK && (
+        <div
+          style={{
+            background: "rgba(245,158,11,0.12)",
+            borderBottom: "1px solid rgba(245,158,11,0.2)",
+            padding: "6px 28px",
+            fontSize: "11px",
+            color: "#f59e0b",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            fontFamily: "'IBM Plex Mono', monospace",
+          }}
+        >
+          <i
+            className="ti ti-flask"
+            style={{ fontSize: "13px" }}
+            aria-hidden="true"
+          />
+          Mock mode — using fake responses for UI development. Set USE_MOCK =
+          false to use the real API.
+        </div>
+      )}
+
       <div className="cr-body">
         {/* Left: editor */}
         <section className="cr-left" aria-label="Code input">
@@ -248,18 +360,15 @@ export default function App() {
               Source code
             </span>
             <span className="cr-char-count">
-              {chars.toLocaleString()} chars
+              {code.length.toLocaleString()} chars
             </span>
           </div>
 
           <textarea
-            ref={textareaRef}
             className="cr-textarea"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder={
-              "// Paste your code here…\nfunction example() {\n  const data = eval(userInput);\n  return data;\n}"
-            }
+            placeholder={"// Paste your code here…"}
             spellCheck={false}
             aria-label="Source code to review"
           />
@@ -278,7 +387,13 @@ export default function App() {
             aria-busy={isLoading}
           >
             <i
-              className={`ti ${isLoading ? "ti-loader-2 cr-spin-icon" : status === "success" ? "ti-refresh" : "ti-player-play"}`}
+              className={`ti ${
+                isLoading
+                  ? "ti-loader-2 cr-spin-icon"
+                  : status === "success"
+                    ? "ti-refresh"
+                    : "ti-player-play"
+              }`}
               aria-hidden="true"
             />
             {isLoading
@@ -300,9 +415,9 @@ export default function App() {
             {status === "success" && result?.verdict && (
               <span
                 className="cr-panel-score"
-                style={{ color: scoreColor(result.verdict.overall_score) }}
+                style={{ color: scoreColor(result.verdict.overall_score ?? 0) }}
               >
-                {result.verdict.overall_score}/100
+                {result.verdict.overall_score ?? 0}/100
               </span>
             )}
           </div>
