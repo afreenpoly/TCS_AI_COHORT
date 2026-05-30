@@ -24,9 +24,6 @@ def review(data: CodeRequest):
 
     return {
         "received_code_length": len(data.code),
-        "security": "No issues found",
-        "performance": "Looks good",
-        "quality": "Readable code",
-        "testing": "Need more tests",
+        "preview": data.code[:100],
         "score": 85
     }

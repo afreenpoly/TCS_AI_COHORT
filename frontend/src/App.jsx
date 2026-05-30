@@ -16,17 +16,20 @@ function App() {
       <h1>AI Code Review System</h1>
 
       <textarea
-        rows="15"
-        cols="100"
-        placeholder="Paste code here..."
+        rows={20}
+        cols={100}
         value={code}
         onChange={(e) => setCode(e.target.value)}
+        placeholder="Paste your code here..."
       />
 
       <br />
       <br />
 
       <button onClick={reviewCode}>Review Code</button>
+
+      <br />
+      <br />
 
       {result && <pre>{JSON.stringify(result, null, 2)}</pre>}
     </div>
