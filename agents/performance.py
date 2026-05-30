@@ -1,19 +1,25 @@
 from services.gemini import ask_gemini, extract_json
-import json
 
-def security_review(code):
+def performance_review(code):
 
     prompt = f"""
-You are a Security Auditor.
+You are a Performance Analyzer.
 
 Return ONLY valid JSON.
 
 {{
-  "agent":"Security Auditor",
+  "agent":"Performance Analyzer",
   "score":0,
   "issues":[],
   "recommendations":[]
 }}
+
+Analyze:
+- Time complexity
+- Memory usage
+- Inefficient loops
+- Redundant computations
+- Database performance issues
 
 Scoring:
 100 = no security issues
