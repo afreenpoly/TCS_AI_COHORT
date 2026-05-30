@@ -1,4 +1,4 @@
-from backend.services.gemini import ask_gemini, extract_json
+from services.gemini import ask_gemini, extract_json
 
 def final_verdict(
     code,
