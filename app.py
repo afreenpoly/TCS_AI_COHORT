@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from agents.security import security_review
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -22,8 +23,8 @@ def home():
 @app.post("/review")
 def review(data: CodeRequest):
 
+    security_result = security_review(data.code)
+
     return {
-        "received_code_length": len(data.code),
-        "preview": data.code[:100],
-        "score": 85
+        "security": security_result
     }
