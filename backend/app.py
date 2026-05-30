@@ -3,11 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from agents.security import security_review
-from agents.performance import performance_review
-from agents.quality import quality_review
-from agents.testing import testing_review
-from agents.verdict import final_verdict
+from backend.agents.security import security_review
+from backend.agents.performance import performance_review
+from backend.agents.quality import quality_review
+from backend.agents.testing import testing_review
+from backend.agents.verdict import final_verdict
 
 app = FastAPI(title="AI Code Review API")
 

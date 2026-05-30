@@ -1,4 +1,4 @@
-from services.gemini import ask_gemini, extract_json
+from backend.services.gemini import ask_gemini, extract_json
 import json
 
 def security_review(code):

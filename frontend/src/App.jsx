@@ -4,7 +4,7 @@ import "./App.css";
 const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 // ─── Mock data for UI development ────────────────────────────────────────────
-const USE_MOCK = true; // set to false to use the real Groq API
+const USE_MOCK = false; // set to false to use the real Groq API
 
 function getMockResult(code) {
   const len = code.length;
